@@ -1,23 +1,6 @@
 #include "stm32f4xx_hal.h"
 #include "stm32_tm1637.h"
 
-/**************** START CONFIGURATION HERE **********************/
-/******** CHOSE PORT AND PIN FOR DATA AND CLOCK *****************/
-#define CLK_PORT GPIOC
-#define DIO_PORT GPIOC
-#define CLK_PIN GPIO_PIN_0
-#define DIO_PIN GPIO_PIN_1
-/**************** END OF CONFIGURATION *************************/
-
-// Internal of Configuration DO NOT EDIT
-#define CLK_PORT_CLK_ENABLE __HAL_RCC_GPIOC_CLK_ENABLE
-#define DIO_PORT_CLK_ENABLE __HAL_RCC_GPIOC_CLK_ENABLE
-
-#define _tm1637ClkHigh CLK_PORT->BSRR = CLK_PIN;
-#define _tm1637ClkLow CLK_PORT->BSRR = ((uint32_t)CLK_PIN << 16U);
-#define _tm1637DioHigh  DIO_PORT->BSRR = DIO_PIN;
-#define _tm1637DioLow DIO_PORT->BSRR = ((uint32_t)DIO_PIN << 16U);
-
 // Internal Functions
 void _tm1637Start(void);
 void _tm1637Stop(void);
@@ -41,7 +24,7 @@ const char segmentMap[] = { (SEG_A + SEG_B + SEG_C + SEG_D + SEG_E + SEG_F), //0
 		(SEG_A + SEG_D + SEG_E + SEG_F + SEG_G), //E
 		(SEG_A + SEG_E + SEG_F + SEG_G), //F
 		0x00 }; // None
-uint8_t _dig1 = SEG_None;
+uint8_t _dig1 = None;
 
 void tm1637Init(void) {
 	tm1637_TM_DELAY_Init();
@@ -85,6 +68,7 @@ void tm1637DisplayChar(int ch, uint8_t column) {
 }
 
 void tm1637DisplayDigit(int ch, uint8_t column) {
+
 	tm1637DisplayChar(segmentMap[ch], column);
 }
 void tm1637ShowColon(uint8_t show) {
