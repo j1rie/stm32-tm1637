@@ -1,165 +1,219 @@
-#include "stm32l1xx_hal.h"
-
+#include "stm32f4xx_hal.h"
 #include "stm32_tm1637.h"
 
-
-void _tm1637Start(void);
-void _tm1637Stop(void);
-void _tm1637ReadResult(void);
-void _tm1637WriteByte(unsigned char b);
-void _tm1637DelayUsec(unsigned int i);
-void _tm1637ClkHigh(void);
-void _tm1637ClkLow(void);
-void _tm1637DioHigh(void);
-void _tm1637DioLow(void);
-
-// Configuration.
-
+/**************** START CONFIGURATION HERE **********************/
+/******** CHOSE PORT AND PIN FOR DATA AND CLOCK *****************/
 #define CLK_PORT GPIOC
 #define DIO_PORT GPIOC
 #define CLK_PIN GPIO_PIN_0
 #define DIO_PIN GPIO_PIN_1
+/**************** END OF CONFIGURATION *************************/
+
+// Internal of Configuration DO NOT EDIT
 #define CLK_PORT_CLK_ENABLE __HAL_RCC_GPIOC_CLK_ENABLE
 #define DIO_PORT_CLK_ENABLE __HAL_RCC_GPIOC_CLK_ENABLE
 
+#define _tm1637ClkHigh CLK_PORT->BSRR = CLK_PIN;
+#define _tm1637ClkLow CLK_PORT->BSRR = ((uint32_t)CLK_PIN << 16U);
+#define _tm1637DioHigh  DIO_PORT->BSRR = DIO_PIN;
+#define _tm1637DioLow DIO_PORT->BSRR = ((uint32_t)DIO_PIN << 16U);
 
-const char segmentMap[] = {
-    0x3f, 0x06, 0x5b, 0x4f, 0x66, 0x6d, 0x7d, 0x07, // 0-7
-    0x7f, 0x6f, 0x77, 0x7c, 0x39, 0x5e, 0x79, 0x71, // 8-9, A-F
-    0x00
-};
+// Internal Functions
+void _tm1637Start(void);
+void _tm1637Stop(void);
+void _tm1637ReadResult(void);
+void _tm1637WriteByte(unsigned char b);
+uint32_t tm1637_TM_DELAY_Init(void);
+const char segmentMap[] = { (SEG_A + SEG_B + SEG_C + SEG_D + SEG_E + SEG_F), //0
+		(SEG_B + SEG_C), //1
+		(SEG_A + SEG_B + SEG_D + SEG_E + SEG_G), //2
+		(SEG_A + SEG_B + SEG_C + SEG_D + SEG_G), //3
+		(SEG_B + SEG_C + SEG_F + SEG_G), //4
+		(SEG_A + SEG_C + SEG_D + SEG_F + SEG_G), //5
+		(SEG_A + SEG_C + SEG_D + SEG_E + SEG_F + SEG_G), //6
+		(SEG_A + SEG_B + SEG_C + SEG_F), //7
+		(SEG_A + SEG_B + SEG_C + SEG_D + SEG_E + SEG_F + SEG_G), //8
+		(SEG_A + SEG_B + SEG_C + SEG_D + SEG_F + SEG_G), //9
+		(SEG_A + SEG_B + SEG_C + SEG_E + SEG_F + SEG_G), //A
+		(SEG_C + SEG_D + SEG_E + SEG_F + SEG_G), //b
+		(SEG_A + SEG_D + SEG_E + SEG_F), //C
+		(SEG_B + SEG_C + SEG_D + SEG_E + SEG_G), //d
+		(SEG_A + SEG_D + SEG_E + SEG_F + SEG_G), //E
+		(SEG_A + SEG_E + SEG_F + SEG_G), //F
+		0x00 }; // None
+uint8_t _dig1 = SEG_None;
 
+void tm1637Init(void) {
+	tm1637_TM_DELAY_Init();
+	CLK_PORT_CLK_ENABLE();
+	DIO_PORT_CLK_ENABLE();
+	GPIO_InitTypeDef g;
+	g.Pull = GPIO_PULLUP;
+	g.Mode = GPIO_MODE_OUTPUT_OD; // OD = open drain
+	g.Speed = GPIO_SPEED_FREQ_LOW;
+	g.Pin = CLK_PIN;
+	HAL_GPIO_Init(CLK_PORT, &g);
+	g.Pin = DIO_PIN;
+	HAL_GPIO_Init(DIO_PORT, &g);
 
-void tm1637Init(void)
-{
-    CLK_PORT_CLK_ENABLE();
-    DIO_PORT_CLK_ENABLE();
-    GPIO_InitTypeDef g = {0};
-    g.Pull = GPIO_PULLUP;
-    g.Mode = GPIO_MODE_OUTPUT_OD; // OD = open drain
-    g.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
-    g.Pin = CLK_PIN;
-    HAL_GPIO_Init(CLK_PORT, &g);
-    g.Pin = DIO_PIN;
-    HAL_GPIO_Init(DIO_PORT, &g);
-
-    tm1637SetBrightness(8);
+	tm1637DisplayDigit(0, 0);
+	tm1637DisplayDigit(1, 1);
+	tm1637DisplayDigit(2, 2);
+	tm1637DisplayDigit(3, 3);
+	tm1637SetBrightness(8);
 }
 
-void tm1637DisplayDecimal(int v, int displaySeparator)
-{
-    unsigned char digitArr[4];
-    for (int i = 0; i < 4; ++i) {
-        digitArr[i] = segmentMap[v % 10];
-        if (i == 2 && displaySeparator) {
-            digitArr[i] |= 1 << 7;
-        }
-        v /= 10;
-    }
+void tm1637DisplayChar(int ch, uint8_t column) {
+	//coppy char to memory
+	if (column == 1)
+		_dig1 = ch;
 
-    _tm1637Start();
-    _tm1637WriteByte(0x40);
-    _tm1637ReadResult();
-    _tm1637Stop();
+	_tm1637Start();
+	_tm1637WriteByte(WriteDataToDispReg);
+	_tm1637ReadResult();
+	_tm1637Stop();
 
-    _tm1637Start();
-    _tm1637WriteByte(0xc0);
-    _tm1637ReadResult();
+	_tm1637Start();
+	_tm1637WriteByte(AdressCmd + column);
+	_tm1637ReadResult();
 
-    for (int i = 0; i < 4; ++i) {
-        _tm1637WriteByte(digitArr[3 - i]);
-        _tm1637ReadResult();
-    }
+	_tm1637WriteByte(ch);
+	_tm1637ReadResult();
 
-    _tm1637Stop();
+	_tm1637Stop();
+
+}
+
+void tm1637DisplayDigit(int ch, uint8_t column) {
+	tm1637DisplayChar(segmentMap[ch], column);
+}
+void tm1637ShowColon(uint8_t show) {
+
+	_tm1637Start();
+	_tm1637WriteByte(WriteDataToDispReg);
+	_tm1637ReadResult();
+	_tm1637Stop();
+
+	_tm1637Start();
+	_tm1637WriteByte(AdressCmd + 1);
+	_tm1637ReadResult();
+
+	if (show) //enable colon +128 to value
+		_dig1 += 128;
+	_tm1637WriteByte(_dig1);
+
+	_tm1637ReadResult();
+	_tm1637Stop();
+}
+
+void tm1637DisplayDecimal(int v, int displaySeparator) {
+	unsigned char digitArr[4];
+	for (int i = 0; i < 4; ++i) {
+		digitArr[i] = segmentMap[v % 10];
+		if (i == 2 && displaySeparator) {
+			digitArr[i] |= 1 << 7;
+		}
+		v /= 10;
+	}
+
+	_tm1637Start();
+	_tm1637WriteByte(WriteDataToDispReg);
+	_tm1637ReadResult();
+	_tm1637Stop();
+
+	_tm1637Start();
+	_tm1637WriteByte(AdressCmd);
+	_tm1637ReadResult();
+
+	for (int i = 0; i < 4; ++i) {
+		_tm1637WriteByte(digitArr[3 - i]);
+		_tm1637ReadResult();
+	}
+
+	_tm1637Stop();
 }
 
 // Valid brightness values: 0 - 8.
 // 0 = display off.
-void tm1637SetBrightness(char brightness)
-{
-    // Brightness command:
-    // 1000 0XXX = display off
-    // 1000 1BBB = display on, brightness 0-7
-    // X = don't care
-    // B = brightness
-    _tm1637Start();
-    _tm1637WriteByte(0x87 + brightness);
-    _tm1637ReadResult();
-    _tm1637Stop();
+void tm1637SetBrightness(char brightness) {
+	// Brightness command:
+	// 1000 0XXX = display off
+	// 1000 1BBB = display on, brightness 0-7
+	// X = don't care
+	// B = brightness
+	_tm1637Start();
+	_tm1637WriteByte(DisplCntrl + brightness);
+	_tm1637ReadResult();
+	_tm1637Stop();
 }
 
-void _tm1637Start(void)
-{
-    _tm1637ClkHigh();
-    _tm1637DioHigh();
-    _tm1637DelayUsec(2);
-    _tm1637DioLow();
+void _tm1637Start(void) {
+	_tm1637ClkHigh
+	_tm1637DioHigh
+	Delay(5);
+	_tm1637DioLow
 }
 
-void _tm1637Stop(void)
-{
-    _tm1637ClkLow();
-    _tm1637DelayUsec(2);
-    _tm1637DioLow();
-    _tm1637DelayUsec(2);
-    _tm1637ClkHigh();
-    _tm1637DelayUsec(2);
-    _tm1637DioHigh();
+void _tm1637Stop(void) {
+	_tm1637ClkLow
+	Delay(10);
+	_tm1637DioLow
+	Delay(10);
+	_tm1637ClkHigh
+	Delay(10);
+	_tm1637DioHigh
 }
 
-void _tm1637ReadResult(void)
-{
-    _tm1637ClkLow();
-    _tm1637DelayUsec(5);
-    // while (dio); // We're cheating here and not actually reading back the response.
-    _tm1637ClkHigh();
-    _tm1637DelayUsec(2);
-    _tm1637ClkLow();
+void _tm1637ReadResult(void) {
+	_tm1637ClkLow
+	Delay(10);
+	// while (dio); // We're cheating here and not actually reading back the response.
+	_tm1637ClkHigh
+	Delay(10);
+	_tm1637ClkLow
 }
 
-void _tm1637WriteByte(unsigned char b)
-{
-    for (int i = 0; i < 8; ++i) {
-        _tm1637ClkLow();
-        if (b & 0x01) {
-            _tm1637DioHigh();
-        }
-        else {
-            _tm1637DioLow();
-        }
-        _tm1637DelayUsec(3);
-        b >>= 1;
-        _tm1637ClkHigh();
-        _tm1637DelayUsec(3);
-    }
+void _tm1637WriteByte(unsigned char b) {
+	for (int i = 0; i < 8; ++i) {
+		_tm1637ClkLow
+		if (b & 0x01) {
+			_tm1637DioHigh
+		} else {
+			_tm1637DioLow
+		}
+		Delay(10);
+		b >>= 1;
+		_tm1637ClkHigh
+		Delay(10);
+	}
 }
 
-void _tm1637DelayUsec(unsigned int i)
-{
-    for (; i>0; i--) {
-        for (int j = 0; j < 10; ++j) {
-            __asm__ __volatile__("nop\n\t":::"memory");
-        }
-    }
-}
+uint32_t tm1637_TM_DELAY_Init(void) {
+#if !defined(STM32F0xx)
+	uint32_t c;
 
-void _tm1637ClkHigh(void)
-{
-    HAL_GPIO_WritePin(CLK_PORT, CLK_PIN, GPIO_PIN_SET);
-}
+	/* Enable TRC */
+	CoreDebug->DEMCR &= ~0x01000000;
+	CoreDebug->DEMCR |= 0x01000000;
 
-void _tm1637ClkLow(void)
-{
-    HAL_GPIO_WritePin(CLK_PORT, CLK_PIN, GPIO_PIN_RESET);
-}
+	/* Enable counter */
+	DWT->CTRL &= ~0x00000001;
+	DWT->CTRL |= 0x00000001;
 
-void _tm1637DioHigh(void)
-{
-    HAL_GPIO_WritePin(DIO_PORT, DIO_PIN, GPIO_PIN_SET);
-}
+	/* Reset counter */
+	DWT->CYCCNT = 0;
 
-void _tm1637DioLow(void)
-{
-    HAL_GPIO_WritePin(DIO_PORT, DIO_PIN, GPIO_PIN_RESET);
+	/* Check if DWT has started */
+	c = DWT->CYCCNT;
+
+	/* 2 dummys */
+	__ASM volatile ("NOP");
+	__ASM volatile ("NOP");
+
+	/* Return difference, if result is zero, DWT has not started */
+	return (DWT->CYCCNT - c);
+#else
+	/* Return OK */
+	return 1;
+#endif
 }
