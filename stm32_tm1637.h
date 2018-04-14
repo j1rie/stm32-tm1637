@@ -1,7 +1,25 @@
 #ifndef STM32_TM1637_H_
 #define STM32_TM1637_H_
 
-#define SEG_None 16
+/**************** START CONFIGURATION HERE **********************/
+/******** CHOSE PORT AND PIN FOR DATA AND CLOCK *****************/
+#define CLK_PORT GPIOC
+#define DIO_PORT GPIOC
+#define CLK_PIN GPIO_PIN_0
+#define DIO_PIN GPIO_PIN_1
+/**************** END OF CONFIGURATION *************************/
+
+// Internal of Configuration DO NOT EDIT
+#define CLK_PORT_CLK_ENABLE __HAL_RCC_GPIOC_CLK_ENABLE
+#define DIO_PORT_CLK_ENABLE __HAL_RCC_GPIOC_CLK_ENABLE
+
+#define _tm1637ClkHigh CLK_PORT->BSRR = CLK_PIN;
+#define _tm1637ClkLow CLK_PORT->BSRR = ((uint32_t)CLK_PIN << 16U);
+#define _tm1637DioHigh  DIO_PORT->BSRR = DIO_PIN;
+#define _tm1637DioLow DIO_PORT->BSRR = ((uint32_t)DIO_PIN << 16U);
+/********************************************************************/
+
+#define None 16
 #define SEG_A 1
 #define SEG_B 2
 #define SEG_C 4
