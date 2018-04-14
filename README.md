@@ -1,4 +1,5 @@
 ### STM32 TM1637 7-segment LED display library
+Its forked from **rogerdahl**, but with small improvments.
 
 This a tiny library to write to a TM1637 7-segment LED display from an STM32 MCU. Porting to other MCUs should be simple. Tested on [STM32F429I-DISCO] but should works also in other STM32Fxx MCU. Based on the code example in the [TM1637 datasheet (Chinese)](http://www.mcielectronics.cl/website_MCI/static/documents/Datasheet_TM1637.pdf).
 
