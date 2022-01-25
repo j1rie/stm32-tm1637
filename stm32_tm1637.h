@@ -1,17 +1,20 @@
 #ifndef STM32_TM1637_H_
 #define STM32_TM1637_H_
 
+#include "irmpmain.h"
+#include "stm32f10x.h"
+
 /**************** START CONFIGURATION HERE **********************/
 /******** CHOSE PORT AND PIN FOR DATA AND CLOCK *****************/
-#define CLK_PORT GPIOC
-#define DIO_PORT GPIOC
-#define CLK_PIN GPIO_PIN_0
-#define DIO_PIN GPIO_PIN_1
+#define CLK_PORT GPIOB
+#define DIO_PORT GPIOB
+#define CLK_PIN GPIO_Pin_4
+#define DIO_PIN GPIO_Pin_11
 /**************** END OF CONFIGURATION *************************/
 
 // Internal of Configuration DO NOT EDIT
-#define CLK_PORT_CLK_ENABLE __HAL_RCC_GPIOC_CLK_ENABLE
-#define DIO_PORT_CLK_ENABLE __HAL_RCC_GPIOC_CLK_ENABLE
+#define CLK_PORT_CLK_ENABLE RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB, ENABLE);
+#define DIO_PORT_CLK_ENABLE RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB, ENABLE);
 
 #define _tm1637ClkHigh CLK_PORT->BSRR = CLK_PIN;
 #define _tm1637ClkLow CLK_PORT->BSRR = ((uint32_t)CLK_PIN << 16U);
@@ -35,6 +38,7 @@
 
 void tm1637Init(void);
 void tm1637DisplayDecimal(int v, int displaySeparator);
+void tm1637DisplayHex(uint16_t v);
 void tm1637SetBrightness(char brightness);
 void tm1637DisplayDigit (int ch, uint8_t column);
 void tm1637ShowColon (uint8_t show);
@@ -42,13 +46,13 @@ void tm1637DisplayChar (int ch, uint8_t column);
 
 extern const char segmentMap[];  //you can use segmentMap in main.c
 
-__STATIC_INLINE void Delay(__IO uint32_t micros) {
+__STATIC_INLINE void _tm1637Delay(__IO uint32_t micros) {
 
 #if !defined(STM32F0xx)
 	uint32_t start = DWT->CYCCNT;
 
 	/* Go to number of cycles for system */
-	micros *= (HAL_RCC_GetHCLKFreq() / 1000000);
+	micros *= (SysCtlClockGet() / 1000000);
 
 	/* Delay till end */
 	while ((DWT->CYCCNT - start) < micros);
