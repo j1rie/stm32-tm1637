@@ -34,7 +34,7 @@ void tm1637Init(void) {
 	CLK_PORT_CLK_ENABLE;
 	DIO_PORT_CLK_ENABLE;
 	GPIO_InitTypeDef GPIO_InitStruct;
-	GPIO_InitStruct.GPIO_Mode = GPIO_Mode_Out_PP; // ??
+	GPIO_InitStruct.GPIO_Mode = GPIO_Mode_Out_PP;
 	GPIO_InitStruct.GPIO_Pin = CLK_PIN;
 	GPIO_InitStruct.GPIO_Speed = GPIO_Speed_2MHz;
 	GPIO_Init(CLK_PORT, &GPIO_InitStruct);
