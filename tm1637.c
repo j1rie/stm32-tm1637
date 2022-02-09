@@ -1,4 +1,4 @@
-#include "stm32_tm1637.h"
+#include "tm1637.h"
 #include "stm32f10x.h"
 // Internal Functions
 void _tm1637Start(void);

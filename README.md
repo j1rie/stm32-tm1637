@@ -19,6 +19,6 @@ Example:
 The `#define CLK_PORT GPIOC`
 `#define DIO_PORT GPIOC`
 `#define CLK_PIN GPIO_PIN_0`
-`#define DIO_PIN GPIO_PIN_1` statements in `stm32_tm1637.h` must be updated to match the actual port and pins to which the display is connected.
+`#define DIO_PIN GPIO_PIN_1` statements in `tm1637.h` must be updated to match the actual port and pins to which the display is connected.
 
 The library takes a shortcut in that it does not read back or act on the status values returned by the display. This could be a problem for use cases in which the display is written to only rarely.
